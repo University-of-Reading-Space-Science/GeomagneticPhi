@@ -6,7 +6,7 @@ Created on Tue Sep 12 11:50:22 2023
 
 a script to compute the modulation potential from geomagnetic OSF estimates
 """
-
+# <codecell> imports
 
 import numpy as np
 import pandas as pd
@@ -40,6 +40,7 @@ hcs_file_path = os.path.join(root, 'data', 'WSO - Computed _Tilt_ Angle of the H
 phi_IC_filepath = os.path.join(root, 'data', 'Phi_mon.txt')
 phi_14C_filepath = os.path.join(root, 'data',  'HMP_14C_Brehm21_FI_all.res')
 phi_14C_QL_filepath = os.path.join(root, 'data', 'HMP_14C_Brehm2021_QL_phi.dat')
+phi_14C_Brehm_filepath = os.path.join(root, 'data', 'Brehm2021_SolModParam.dat')
 
 #set plot defaults
 system.plot_defaults()
@@ -1007,7 +1008,7 @@ IC_1y['phi_NM_scaled'] = p_nm[0]*IC_1y['phi_NM'] + p_nm[1]
 
 
 #load the 14C phi from Brehm 2021
-carbon = sunspots.load_14C_phi(filepath = phi_14C_filepath)
+carbon = sunspots.load_14C_phi_IlyaBrehm(filepath = phi_14C_filepath)
 
 suess_start = 1890
 mask_before_suess = carbon['datetime'] <= datetime(suess_start,1,1)
@@ -1120,8 +1121,6 @@ fig.savefig(os.path.join(figdir, 'model_1845_2020.pdf'))
 
 
 
-
-
 fig = plt.figure(figsize=(8,10))
 
 startyr = datetime(1800,1,1)
@@ -1181,4 +1180,177 @@ ax.set_ylabel(r'$\phi$ [MV]')
 fig.savefig(os.path.join(figdir, 'HMP_now_summary.pdf'))
 
 
+
+
+# <codecell> Replicate plots with REAL Brehm values
+
+#load the 14C phi from Brehm 2021
+#carbon_brehm = sunspots.load_14C_phi_brehm2021(filepath = phi_14C_Brehm_filepath)
+carbon = sunspots.load_14C_phi_Brehm_published(filepath = phi_14C_Brehm_filepath)
+
+suess_start = 1890
+mask_before_suess = carbon['datetime'] <= datetime(suess_start,1,1)
+mask_after_suess = carbon['datetime'] >= datetime(suess_start-1,1,1)
+
+ymax = 1300
+alpha = 0.7
+fig = plt.figure(figsize=(8,12))
+
+mask_ic = IC_1y['fracyear'] < 1952
+mask_nm = IC_1y['fracyear'] >= 1951
+
+ax = plt.subplot(3,1,1)
+#ax.plot(osf_df['datetime'], phi_E2016_geo, 'b', label = 'OSF(GEO) AU2016')
+ax.plot(osf_df['datetime'], phi_new_geo, 'r', label = 'GEO (O2024)')
+ax.plot(osf_df['datetime'], phi, 'k', label = 'NM (U2017)')
+ax.plot(IC_1y.loc[mask_ic,'datetime'], IC_1y.loc[mask_ic, 'phi_NM_scaled'], 'b--', label = 'IC (U2011)*')
+plt.legend(loc = 'upper left')
+ax.set_ylabel(r'$\phi$ [MV]')
+ax.set_ylim([0,ymax])
+sunspots.PlotAlternateCycles()
+ax.text(0.01, 0.05, '(a)', transform=plt.gca().transAxes, fontsize=fontsize)
+xx = ax.get_xlim()
+ax.set_xlim(xx)
+
+#add uncertainty range
+# ax.fill_between(osf_df['datetime'], conf_slope[0] * phi_new_geo + conf_intercept[0], 
+#                   conf_slope[1] * phi_new_geo + conf_intercept[1], 
+#                   color='pink',  alpha = alpha)
+ax.fill_between(osf_df['datetime'], phi_new_geo - prob_int_new, 
+                  phi_new_geo + prob_int_new, 
+                  color='pink', alpha = alpha)
+# ax.fill_between(osf_df['datetime'], phi_E2016_geo - prob_int_E2016, 
+#                   phi_E2016_geo + prob_int_E2016, 
+#                   color='lightblue', alpha = alpha)
+
+
+
+ax = plt.subplot(3,1,2)
+#ax.plot(osf_df['datetime'], phi_E2016_geo, 'b', label = 'OSF(GEO) AU2016')
+ax.plot(osf_df['datetime'], phi_new_geo, 'r', label = 'GEO (O2024)')
+ax.plot(carbon.loc[mask_before_suess, 'datetime'], 
+        carbon.loc[mask_before_suess,'phi_14C'], 'k', label = '14C (B2021)')
+# ax.plot(carbon_brehm.loc[mask_before_suess_brehm, 'datetime'], 
+#         carbon_brehm.loc[mask_before_suess_brehm,'phi_14C'], 'b', label = '14C (B2021)')
+plt.legend(loc = 'upper left')
+ax.plot(carbon.loc[mask_after_suess, 'datetime'], 
+        carbon.loc[mask_after_suess,'phi_14C'], 'k--')
+# ax.plot(carbon_brehm.loc[mask_after_suess_brehm, 'datetime'], 
+#         carbon_brehm.loc[mask_after_suess_brehm,'phi_14C'], 'b')
+ax.set_ylim([0,ymax])
+sunspots.PlotAlternateCycles()
+# ax.fill_between(carbon['datetime'], carbon['phi_14C'] - carbon['phi_14C_sigma'], 
+#                 carbon['phi_14C'] + carbon['phi_14C_sigma'], 
+#                  color = 'grey', zorder = 0.1, alpha = alpha)  
+ax.set_ylabel(r'$\phi$ [MV]')
+
+#add uncertainty range
+# ax.fill_between(osf_df['datetime'], conf_slope[0] * phi_new_geo + conf_intercept[0], 
+#                   conf_slope[1] * phi_new_geo + conf_intercept[1], 
+#                   color='pink', alpha = alpha)
+ax.fill_between(osf_df['datetime'], phi_new_geo - prob_int_new, 
+                  phi_new_geo + prob_int_new, 
+                  color='pink', alpha = alpha)
+# ax.fill_between(osf_df['datetime'], phi_E2016_geo - prob_int_E2016, 
+#                   phi_E2016_geo + prob_int_E2016, 
+#                   color='lightblue', alpha = alpha)
+
+ax.text(0.01, 0.05, '(c)', transform=plt.gca().transAxes, fontsize=fontsize)
+ax.set_xlim(xx)
+
+
+
+ax = plt.subplot(3,1,3)
+#ax.plot(osf_df['datetime'], phi_E2016_geo, 'b', label = 'OSF(GEO) AU2016')
+ax.plot(osf_df['datetime'], phi_new_geo, 'r', label = 'GEO (O2024)')
+ax.plot(carbonQL.loc[mask_before_suess_QL, 'datetime'], 
+        carbonQL.loc[mask_before_suess_QL,'phi_14C'], 'k', label = '14C (SB1993)')
+plt.legend(loc = 'upper left')
+ax.plot(carbonQL.loc[mask_after_suess_QL, 'datetime'], 
+        carbonQL.loc[mask_after_suess_QL,'phi_14C'], 'k--')
+ax.set_ylim([0,ymax])
+sunspots.PlotAlternateCycles() 
+ax.set_ylabel(r'$\phi$ [MV]')
+ax.set_xlabel('Year')
+
+#add uncertainty range
+# ax.fill_between(osf_df['datetime'], conf_slope[0] * phi_new_geo + conf_intercept[0], 
+#                   conf_slope[1] * phi_new_geo + conf_intercept[1], 
+#                   color='pink', alpha = alpha)
+ax.fill_between(osf_df['datetime'], phi_new_geo - prob_int_new, 
+                  phi_new_geo + prob_int_new, 
+                  color='pink', alpha = alpha)
+# ax.fill_between(osf_df['datetime'], phi_E2016_geo - prob_int_E2016, 
+#                   phi_E2016_geo + prob_int_E2016, 
+#                   color='lightblue', alpha = alpha)
+
+ax.text(0.01, 0.05, '(c)', transform=plt.gca().transAxes, fontsize=fontsize)
+ax.set_xlim(xx)
+
+
+fig.savefig(os.path.join(figdir, 'model_1845_2020_corrected.pdf'))
+
+# <codecell> Produce a "motivation" plot of the current HMP estimtaes
+
+
+
+
+
+fig = plt.figure(figsize=(8,10))
+
+startyr = datetime(1800,1,1)
+stopyr = datetime(2025,1,1)
+
+ax = plt.subplot(2,1,1)
+#=======================
+ax.plot(osf_df['datetime'], phi, 'b', label = 'NM (U2017)')
+
+ax.plot(IC_1y.loc[mask_ic,'datetime'], IC_1y.loc[mask_ic, 'phi_NM_scaled'], 'r--', label = 'IC (U2011)*')
+
+ax.plot(carbon.loc[mask_before_suess, 'datetime'], 
+        carbon.loc[mask_before_suess,'phi_14C'], 'k', label = '14C (B2021)')
+
+
+plt.legend(loc = 'upper left')
+ax.plot(carbon.loc[mask_after_suess, 'datetime'], 
+        carbon.loc[mask_after_suess,'phi_14C'], 'k--')
+
+ax.set_ylim([0,ymax])
+ax.set_xlim([startyr, stopyr])
+sunspots.PlotAlternateCycles()
+# ax.fill_between(carbon['datetime'], 
+#                 carbon['phi_14C'] - carbon['phi_14C_sigma'], 
+#                 carbon['phi_14C'] + carbon['phi_14C_sigma'], 
+#                  color = 'grey', zorder = 0.1, alpha = alpha)  
+ax.text(0.01, 0.05, '(a)', transform=plt.gca().transAxes, fontsize=fontsize)
+xx = ax.get_xlim()
+ax.set_xlim(xx)
+ax.set_ylabel(r'$\phi$ [MV]')
+
+
+ax = plt.subplot(2,1,2)
+#=======================
+ax.plot(osf_df['datetime'], phi, 'b', label = 'NM (U2017)')
+ax.plot(IC_1y.loc[mask_ic,'datetime'], IC_1y.loc[mask_ic, 'phi_NM_scaled'], 'r--', label = 'IC (U2011)*')
+
+ax.plot(carbonQL.loc[mask_before_suess_QL, 'datetime'], 
+        carbonQL.loc[mask_before_suess_QL,'phi_14C'], 'k', label = '14C (SB1993)')
+
+plt.legend(loc = 'upper left')
+
+ax.plot(carbonQL.loc[mask_after_suess_QL, 'datetime'], 
+        carbonQL.loc[mask_after_suess_QL,'phi_14C'], 'k--')
+ax.set_ylim([0,ymax])
+ax.set_xlim([startyr, stopyr])
+sunspots.PlotAlternateCycles() 
+ax.text(0.01, 0.05, '(b)', transform=plt.gca().transAxes, fontsize=fontsize)
+xx = ax.get_xlim()
+ax.set_xlim(xx)
+ax.set_xlabel('Year')
+ax.set_ylabel(r'$\phi$ [MV]')
+
+
+
+
+fig.savefig(os.path.join(figdir, 'HMP_now_summary_corrected.pdf'))
 
