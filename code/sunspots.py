@@ -492,7 +492,7 @@ def load_oulu_phi_extended(filepath = None, download_now = True):
     return melted_df     
 
 
-def load_14C_phi(filepath = None):
+def load_14C_phi_IlyaBrehm(filepath = None):
     #function to load the heliospheric modulation potential estimated from 14C
     #supplied by Ilya from Brehm, NatGeo, 2021
      
@@ -505,6 +505,24 @@ def load_14C_phi(filepath = None):
                          names=["Year", "phi_14C", "phi_14C_sigma", "phi_14C_SSA1"])
     #make the year the mid point.
     df['Year'] = df['Year'] +0.5
+    #add mjd and datetime
+    df['mjd'] = htime.fracyear2mjd(df['Year'].to_numpy())
+    df['datetime'] = htime.mjd2datetime(df['mjd'].to_numpy())
+    
+    return df
+
+
+def load_14C_phi_Brehm_published(filepath = None):
+    #function to load the heliospheric modulation potential estimated from 14C
+    #published data from Brehm et al., NatGeo, 2021
+     
+    if filepath is None:
+        data_dir = system._setup_dirs_()['datapath']
+        filepath = os.path.join(data_dir, 'Brehm2021_SolModParam.dat')
+
+    
+    df = pd.read_csv(filepath, sep="\t", 
+                         names=["Year", "phi_14C"])
     #add mjd and datetime
     df['mjd'] = htime.fracyear2mjd(df['Year'].to_numpy())
     df['datetime'] = htime.mjd2datetime(df['mjd'].to_numpy())
